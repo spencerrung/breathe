@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" data-theme="twilight">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>breathe — guided paced breathing</title>
+    <meta
+      name="description"
+      content="A calm, beautiful guide for paced breathing — box breathing, 4-7-8, coherent breathing and more. No accounts, no tracking, just breath."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:title" content="breathe — guided paced breathing" />
+    <meta
+      property="og:description"
+      content="Box breathing, 4-7-8, coherent breathing and more, paced by a softly glowing orb. No accounts, no tracking, just breath."
+    />
+    <meta property="og:type" content="website" />
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <main id="app">
+      <!-- ============ Screen: home ============ -->
+      <section class="screen screen-home active" data-screen="home">
+        <header class="home-head">
+          <h1 class="wordmark">breathe</h1>
+          <p class="tagline">Slow down. Follow the light.</p>
+        </header>
+        <div class="cards" id="technique-cards"></div>
+        <footer class="home-footer">
+          <div class="theme-row" id="theme-row" role="group" aria-label="Color theme"></div>
+          <button type="button" class="text-toggle" id="large-text-toggle" aria-pressed="false">
+            Large text
+          </button>
+        </footer>
+      </section>
+
+      <!-- ============ Screen: custom timing editor ============ -->
+      <section class="screen screen-custom" data-screen="custom">
+        <header class="custom-head">
+          <button type="button" class="back-btn" id="custom-back" aria-label="Back to techniques">←</button>
+          <h2>Your own pace</h2>
+        </header>
+        <div class="steppers" id="custom-steppers"></div>
+        <p class="custom-preview" id="custom-preview" aria-live="polite"></p>
+        <div class="duration-row" id="custom-durations" role="group" aria-label="Session length"></div>
+        <button type="button" class="begin-btn" id="custom-begin">Begin</button>
+      </section>
+
+      <!-- ============ Screen: session ============ -->
+      <section class="screen screen-session" data-screen="session">
+        <canvas id="orb-canvas" aria-hidden="true"></canvas>
+        <div id="calm-visual" class="calm-visual" hidden aria-hidden="true">
+          <div class="calm-circle"></div>
+        </div>
+        <div class="session-overlay">
+          <p class="phase-text" id="phase-text" aria-live="polite"></p>
+          <div class="phase-dial">
+            <svg viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="dial-track" cx="50" cy="50" r="44" />
+              <circle class="dial-arc" id="dial-arc" cx="50" cy="50" r="44" />
+            </svg>
+            <span class="dial-seconds" id="dial-seconds"></span>
+          </div>
+        </div>
+        <div class="session-controls" id="session-controls">
+          <button type="button" id="btn-pause" aria-label="Pause">⏸</button>
+          <button type="button" id="btn-fullscreen" aria-label="Enter fullscreen">⛶</button>
+          <button type="button" id="btn-exit" aria-label="End session">✕</button>
+        </div>
+        <div class="session-progress" id="session-progress" aria-hidden="true">
+          <div class="session-progress-fill" id="session-progress-fill"></div>
+        </div>
+      </section>
+
+      <!-- ============ Screen: complete ============ -->
+      <section class="screen screen-complete" data-screen="complete">
+        <div class="complete-card">
+          <h2>Well done.</h2>
+          <p class="complete-summary" id="complete-summary"></p>
+          <div class="complete-actions">
+            <button type="button" class="begin-btn" id="btn-again">Once more</button>
+            <button type="button" class="quiet-btn" id="btn-done">Done</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
