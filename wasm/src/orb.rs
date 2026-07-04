@@ -128,10 +128,11 @@ impl BreathOrb {
         // rest. 0.4 mirrors the renderer's R_MAX fraction of min(w, h).
         let max_r = (0.4 * self.w.min(self.h)).max(1.0);
         let rel = (target_radius / max_r).clamp(0.0, 1.2);
-        // Sizes are proportional to the orb radius itself (320px max-radius
-        // desktop reference), so overlap density — and therefore additive
-        // brightness — is the same on a phone and a desktop monitor.
-        let size_scale = (0.65 + 0.6 * rel) * (max_r / 320.0);
+        // Mild size growth with orb radius (320px max-radius reference). The
+        // renderer scales particle COUNT with orb area (r^1.2) and this size
+        // exponent (r^0.4) supplies the rest: overlap density stays constant
+        // on every screen while particles stay small and crisp.
+        let size_scale = (0.65 + 0.6 * rel) * (max_r / 320.0).powf(0.4);
         let glow_scale = 0.35 + 0.65 * rel;
 
         for (i, p) in self.parts[..self.count].iter_mut().enumerate() {

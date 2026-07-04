@@ -9,10 +9,15 @@ export interface VisualRenderer {
   destroy(): void;
 }
 
-const GL_PARTICLES = 22_000;
+// Particle count scales with orb area: N = BASE * (maxRadius/320)^1.2, so a
+// 4K monitor gets tens of thousands of fine crisp points and a phone gets
+// fewer — same overlap density (and glow) everywhere, no fat blurry sprites.
+const GL_BASE_PARTICLES = 22_000;
+const GL_MAX_PARTICLES = 64_000;
+const GL_MIN_PARTICLES = 8_000;
 const FALLBACK_PARTICLES = 1_500;
 // Phones are DPR 3 — capping lower than that upscales the canvas and blurs
-// the particles. 22k points is light enough to render at full density.
+// the particles.
 const DPR_CAP = 3;
 
 // Radius of the breathing ring as a fraction of min(w, h): rest → full.
@@ -90,7 +95,7 @@ function createGlRenderer(canvas: HTMLCanvasElement): PointRenderer | null {
   gl.bindVertexArray(vao);
   const buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bufferData(gl.ARRAY_BUFFER, GL_PARTICLES * 4 * 4, gl.STREAM_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, GL_MAX_PARTICLES * 4 * 4, gl.STREAM_DRAW);
   gl.enableVertexAttribArray(0);
   gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 0, 0);
 
@@ -185,7 +190,8 @@ export class OrbVisual implements VisualRenderer {
   private readonly canvas: HTMLCanvasElement;
   private readonly sim: InstanceType<Breathe['BreathOrb']>;
   private renderer: PointRenderer;
-  private readonly count: number;
+  private readonly usingGl: boolean;
+  private count: number;
   private readonly ro: ResizeObserver;
   private readonly onLost: (e: Event) => void;
   private readonly onRestored: () => void;
@@ -209,12 +215,18 @@ export class OrbVisual implements VisualRenderer {
     } catch {
       /* fall through to canvas2d */
     }
-    const usingGl = renderer !== null;
+    this.usingGl = renderer !== null;
     this.renderer = renderer ?? create2dRenderer(canvas);
-    this.count = usingGl ? GL_PARTICLES : FALLBACK_PARTICLES;
+    this.count = this.idealCount();
     this.renderer.setTheme(theme);
 
-    this.sim = new wasm.BreathOrb(this.count, this.w, this.h, 0x9e3779b9);
+    this.sim = new wasm.BreathOrb(
+      this.usingGl ? GL_MAX_PARTICLES : FALLBACK_PARTICLES,
+      this.w,
+      this.h,
+      0x9e3779b9,
+    );
+    this.sim.set_count(this.count);
 
     this.onLost = (e) => e.preventDefault();
     this.onRestored = () => {
@@ -240,8 +252,18 @@ export class OrbVisual implements VisualRenderer {
       canvas.width = nw;
       canvas.height = nh;
       this.sim.resize(nw, nh);
+      this.count = this.idealCount();
+      this.sim.set_count(this.count);
     });
     this.ro.observe(host);
+  }
+
+  /** Particle count matched to orb area so density is screen-independent. */
+  private idealCount(): number {
+    if (!this.usingGl) return FALLBACK_PARTICLES;
+    const maxR = 0.4 * Math.min(this.w, this.h);
+    const n = Math.round(GL_BASE_PARTICLES * Math.pow(maxR / 320, 1.2));
+    return Math.min(GL_MAX_PARTICLES, Math.max(GL_MIN_PARTICLES, n));
   }
 
   setTheme(theme: Theme): void {
