@@ -606,8 +606,7 @@ button:focus-visible {
   height: 54px;
   border-radius: 50%;
   border: 1px solid var(--line);
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.45);
   font-size: 1.15rem;
   display: grid;
   place-items: center;
@@ -682,6 +681,22 @@ button:focus-visible {
 }
 
 /* ============ responsive ============ */
+
+/* On small screens the contracted ring is narrower than the phase text, so
+   centered text would sit ON the ring. Push the words to the top and the dial
+   to the bottom; the orb keeps the middle of the screen to itself. */
+@media (max-width: 760px) {
+  .session-overlay {
+    justify-content: space-between;
+    padding: calc(2rem + env(safe-area-inset-top)) 1rem
+      calc(7rem + env(safe-area-inset-bottom));
+  }
+
+  .phase-text {
+    font-size: calc(clamp(1.9rem, 9vw, 2.6rem) * var(--type-scale));
+    text-shadow: none;
+  }
+}
 
 @media (max-width: 640px) {
   .cards {

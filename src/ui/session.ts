@@ -42,6 +42,10 @@ export function setupSession(deps: SessionDeps): SessionController {
 
   dialArc.style.strokeDasharray = String(ARC_CIRCUMFERENCE);
 
+  // Auto-hide is a pointer-idle affordance; on touch screens there is no
+  // hover to bring controls back, so they stay visible for the whole session.
+  const autoHideControls = matchMedia('(hover: hover) and (pointer: fine)').matches;
+
   let engine: BreathSession | null = null;
   let visual: VisualRenderer | null = null;
   let loop: LoopHandle | null = null;
@@ -56,6 +60,7 @@ export function setupSession(deps: SessionDeps): SessionController {
     controls.classList.remove('hidden');
     section.classList.remove('idle-cursor');
     clearTimeout(hideTimer);
+    if (!autoHideControls) return;
     hideTimer = window.setTimeout(() => {
       controls.classList.add('hidden');
       section.classList.add('idle-cursor');

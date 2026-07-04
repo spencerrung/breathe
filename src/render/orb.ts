@@ -11,7 +11,9 @@ export interface VisualRenderer {
 
 const GL_PARTICLES = 22_000;
 const FALLBACK_PARTICLES = 1_500;
-const DPR_CAP = 1.5;
+// Phones are DPR 3 — capping lower than that upscales the canvas and blurs
+// the particles. 22k points is light enough to render at full density.
+const DPR_CAP = 3;
 
 // Radius of the breathing ring as a fraction of min(w, h): rest → full.
 const R_MIN = 0.12;
@@ -20,13 +22,13 @@ const R_MAX = 0.4;
 const VS = `#version 300 es
 layout(location=0) in vec4 a_data; // x, y, size, glow
 uniform vec2 u_resolution;
-uniform float u_dpr;
 out float v_glow;
 void main() {
   vec2 clip = (a_data.xy / u_resolution) * 2.0 - 1.0;
   gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
   v_glow = a_data.w;
-  gl_PointSize = a_data.z * u_dpr;
+  // size arrives in backing-store px, already scaled to the orb radius
+  gl_PointSize = a_data.z;
 }`;
 
 const FS = `#version 300 es
@@ -39,8 +41,10 @@ out vec4 outColor;
 void main() {
   float d = length(gl_PointCoord - 0.5);
   float a = smoothstep(0.5, 0.0, d);
-  vec3 col = mix(u_outer, u_inner, v_glow) * a * u_energy * 0.42;
-  outColor = vec4(col, 1.0);
+  vec3 col = mix(u_outer, u_inner, v_glow) * a * u_energy * 0.55;
+  // Soft exponential tone map: additive pile-ups roll off into a creamy glow
+  // instead of hard-clamping to a white donut when the ring is small.
+  outColor = vec4(1.0 - exp(-1.5 * col), 1.0);
 }`;
 
 interface PointRenderer {
@@ -48,7 +52,7 @@ interface PointRenderer {
   setTheme(theme: Theme): void;
 }
 
-function createGlRenderer(canvas: HTMLCanvasElement, dpr: number): PointRenderer | null {
+function createGlRenderer(canvas: HTMLCanvasElement): PointRenderer | null {
   const gl = canvas.getContext('webgl2', {
     alpha: false,
     antialias: false,
@@ -78,11 +82,9 @@ function createGlRenderer(canvas: HTMLCanvasElement, dpr: number): PointRenderer
   gl.useProgram(prog);
 
   const uResolution = gl.getUniformLocation(prog, 'u_resolution');
-  const uDpr = gl.getUniformLocation(prog, 'u_dpr');
   const uInner = gl.getUniformLocation(prog, 'u_inner');
   const uOuter = gl.getUniformLocation(prog, 'u_outer');
   const uEnergy = gl.getUniformLocation(prog, 'u_energy');
-  gl.uniform1f(uDpr, dpr);
 
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
@@ -203,7 +205,7 @@ export class OrbVisual implements VisualRenderer {
 
     let renderer: PointRenderer | null = null;
     try {
-      renderer = createGlRenderer(canvas, dpr);
+      renderer = createGlRenderer(canvas);
     } catch {
       /* fall through to canvas2d */
     }
@@ -217,7 +219,7 @@ export class OrbVisual implements VisualRenderer {
     this.onLost = (e) => e.preventDefault();
     this.onRestored = () => {
       try {
-        const r = createGlRenderer(canvas, dpr);
+        const r = createGlRenderer(canvas);
         if (r) {
           r.setTheme(this.theme);
           this.renderer = r;
@@ -254,9 +256,14 @@ export class OrbVisual implements VisualRenderer {
     const base = Math.min(this.w, this.h);
     const radius = base * (R_MIN + (R_MAX - R_MIN) * snap.breath);
     this.sim.step(dt, radius, snap.shimmer, this.energy);
+    // A contracted orb packs every particle into a tiny disc — additive
+    // blending would saturate no matter how dim each sprite is. Draw fewer
+    // particles when small; all of them still get stepped, so the ones that
+    // fade back in are already in place.
+    const drawCount = Math.max(1, Math.round(this.count * (0.38 + 0.62 * snap.breath)));
     this.renderer.draw(
       f32View(this.sim.data_ptr(), this.count * 4),
-      this.count,
+      drawCount,
       this.w,
       this.h,
       this.energy,

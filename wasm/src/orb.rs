@@ -40,8 +40,11 @@ impl BreathOrb {
         let mut rng = XorShift::new(seed);
         let mut parts = Vec::with_capacity(max);
 
-        for i in 0..max {
-            let ring = (i as f32) < (max as f32) * RING_FRACTION;
+        for _ in 0..max {
+            // Random (not index-based) assignment: the renderer draws a prefix
+            // of the buffer when the orb is contracted, and a random mix keeps
+            // that prefix at the same ring/mist composition.
+            let ring = rng.next_f32() < RING_FRACTION;
             let (band, size, glow) = if ring {
                 (
                     0.92 + 0.16 * rng.next_f32(),
@@ -49,11 +52,12 @@ impl BreathOrb {
                     0.7 + 0.3 * rng.next_f32(),
                 )
             } else {
-                // sqrt biases the mist outward so density rises toward the ring
+                // sqrt biases the mist outward so density rises toward the
+                // ring; big faint sprites read as haze, not pixel static
                 (
                     0.15 + 0.75 * rng.next_f32().sqrt(),
-                    2.0 + 2.0 * rng.next_f32(),
-                    0.18 + 0.32 * rng.next_f32(),
+                    3.5 + 2.5 * rng.next_f32(),
+                    0.10 + 0.22 * rng.next_f32(),
                 )
             };
 
@@ -122,9 +126,13 @@ impl BreathOrb {
         // Ring density falls as the orb expands; growing size/glow with the
         // radius keeps perceived light steady and avoids additive blowout at
         // rest. 0.4 mirrors the renderer's R_MAX fraction of min(w, h).
-        let rel = (target_radius / (0.4 * self.w.min(self.h)).max(1.0)).clamp(0.0, 1.2);
-        let size_scale = 0.65 + 0.6 * rel;
-        let glow_scale = 0.55 + 0.45 * rel;
+        let max_r = (0.4 * self.w.min(self.h)).max(1.0);
+        let rel = (target_radius / max_r).clamp(0.0, 1.2);
+        // Sizes are proportional to the orb radius itself (320px max-radius
+        // desktop reference), so overlap density — and therefore additive
+        // brightness — is the same on a phone and a desktop monitor.
+        let size_scale = (0.65 + 0.6 * rel) * (max_r / 320.0);
+        let glow_scale = 0.35 + 0.65 * rel;
 
         for (i, p) in self.parts[..self.count].iter_mut().enumerate() {
             p.theta += p.omega * drift * dt;
