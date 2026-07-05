@@ -21,6 +21,7 @@
   --accent: #8b7bff;
   --accent-2: #c3b1ff;
   --glow: rgba(139, 123, 255, 0.35);
+  --glow-hi: rgba(199, 137, 255, 0.4);
 }
 
 [data-theme='ocean'] {
@@ -33,6 +34,7 @@
   --accent: #2dd4bf;
   --accent-2: #8ff5e4;
   --glow: rgba(45, 212, 191, 0.3);
+  --glow-hi: rgba(120, 240, 170, 0.36);
 }
 
 [data-theme='dawn'] {
@@ -45,6 +47,7 @@
   --accent: #fb923c;
   --accent-2: #ffc9a3;
   --glow: rgba(251, 146, 60, 0.28);
+  --glow-hi: rgba(255, 200, 70, 0.34);
 }
 
 .large-text {
@@ -517,6 +520,7 @@ button:focus-visible {
 }
 
 .calm-circle {
+  position: relative;
   width: min(58vmin, 480px);
   height: min(58vmin, 480px);
   border-radius: 50%;
@@ -525,6 +529,18 @@ button:focus-visible {
   box-shadow: 0 0 90px var(--glow), inset 0 0 60px var(--glow);
   transition: opacity 0.6s ease;
   will-change: transform;
+}
+
+/* Inhale-tinted glow layered on top; opacity follows the breath value so the
+   reduced-motion circle also shifts color with the breath, not just size. */
+.calm-circle::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, var(--glow-hi) 0%, transparent 68%);
+  box-shadow: 0 0 90px var(--glow-hi), inset 0 0 60px var(--glow-hi);
+  opacity: var(--breath-tone, 0);
 }
 
 .session-overlay {

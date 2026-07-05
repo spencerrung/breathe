@@ -22,6 +22,7 @@ export class CalmVisual implements VisualRenderer {
   frame(snap: Snapshot): void {
     const scale = 0.45 + 0.55 * snap.breath;
     this.circle.style.transform = `scale(${scale.toFixed(4)})`;
+    this.circle.style.setProperty('--breath-tone', snap.breath.toFixed(3));
     this.circle.style.opacity = snap.state === 'paused' || snap.state === 'complete' ? '0.5' : '1';
   }
 

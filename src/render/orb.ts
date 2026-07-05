@@ -53,8 +53,15 @@ void main() {
 }`;
 
 interface PointRenderer {
-  draw(view: Float32Array, count: number, w: number, h: number, energy: number): void;
+  /** tone 0..1 crossfades the resting palette toward the inhale palette. */
+  draw(view: Float32Array, count: number, w: number, h: number, energy: number, tone: number): void;
   setTheme(theme: Theme): void;
+}
+
+type Rgb = [number, number, number];
+
+function mixRgb(a: Rgb, b: Rgb, t: number): Rgb {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 }
 
 function createGlRenderer(canvas: HTMLCanvasElement): PointRenderer | null {
@@ -102,15 +109,20 @@ function createGlRenderer(canvas: HTMLCanvasElement): PointRenderer | null {
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE); // additive glow on the dark background
 
-  let bg: [number, number, number] = [0, 0, 0];
+  let current: Theme | null = null;
 
   return {
     setTheme(theme) {
-      bg = theme.bg;
-      gl.uniform3f(uInner, ...theme.inner);
-      gl.uniform3f(uOuter, ...theme.outer);
+      current = theme;
     },
-    draw(view, count, w, h, energy) {
+    draw(view, count, w, h, energy, tone) {
+      const bg = current?.bg ?? [0, 0, 0];
+      if (current) {
+        // Palette rides the breath: mixing on the CPU keeps the shader as-is
+        // and costs six floats per frame.
+        gl.uniform3f(uInner, ...mixRgb(current.inner, current.innerHi, tone));
+        gl.uniform3f(uOuter, ...mixRgb(current.outer, current.outerHi, tone));
+      }
       gl.viewport(0, 0, w, h);
       gl.uniform2f(uResolution, w, h);
       gl.uniform1f(uEnergy, energy);
@@ -127,7 +139,11 @@ function create2dRenderer(canvas: HTMLCanvasElement): PointRenderer {
   const ctx = canvas.getContext('2d')!;
   const SPRITE = 24;
 
-  const makeSprite = (rgb: [number, number, number]) => {
+  // Sprites are pre-rendered, so the breath-tone crossfade is quantized to a
+  // handful of steps and cached — imperceptible on soft gradients.
+  const TONE_STEPS = 8;
+
+  const makeSprite = (rgb: Rgb) => {
     const c = document.createElement('canvas');
     c.width = SPRITE;
     c.height = SPRITE;
@@ -142,16 +158,35 @@ function create2dRenderer(canvas: HTMLCanvasElement): PointRenderer {
   };
 
   let bgCss = '#000';
-  let innerSprite = makeSprite([1, 1, 1]);
-  let outerSprite = makeSprite([0.3, 0.3, 0.3]);
+  let current: Theme | null = null;
+  const cache = new Map<string, HTMLCanvasElement>();
+
+  const spriteFor = (cls: 'inner' | 'outer', step: number) => {
+    const key = `${cls}${step}`;
+    let sprite = cache.get(key);
+    if (!sprite) {
+      const t = step / TONE_STEPS;
+      const rgb: Rgb = current
+        ? cls === 'inner'
+          ? mixRgb(current.inner, current.innerHi, t)
+          : mixRgb(current.outer, current.outerHi, t)
+        : [1, 1, 1];
+      sprite = makeSprite(rgb);
+      cache.set(key, sprite);
+    }
+    return sprite;
+  };
 
   return {
     setTheme(theme) {
       bgCss = `rgb(${Math.round(theme.bg[0] * 255)}, ${Math.round(theme.bg[1] * 255)}, ${Math.round(theme.bg[2] * 255)})`;
-      innerSprite = makeSprite(theme.inner);
-      outerSprite = makeSprite(theme.outer);
+      current = theme;
+      cache.clear();
     },
-    draw(view, count, w, h, energy) {
+    draw(view, count, w, h, energy, tone) {
+      const step = Math.round(Math.min(1, Math.max(0, tone)) * TONE_STEPS);
+      const innerSprite = spriteFor('inner', step);
+      const outerSprite = spriteFor('outer', step);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
       ctx.fillStyle = bgCss;
@@ -283,12 +318,16 @@ export class OrbVisual implements VisualRenderer {
     // particles when small; all of them still get stepped, so the ones that
     // fade back in are already in place.
     const drawCount = Math.max(1, Math.round(this.count * (0.38 + 0.62 * snap.breath)));
+    // Color rides the eased breath value too: the palette warms toward the
+    // theme's inhale colors as the orb fills and settles back on the exhale —
+    // a second signal that the breath is doing something.
     this.renderer.draw(
       f32View(this.sim.data_ptr(), this.count * 4),
       drawCount,
       this.w,
       this.h,
       this.energy,
+      snap.breath,
     );
   }
 
