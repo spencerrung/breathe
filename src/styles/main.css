@@ -50,6 +50,19 @@
   --glow-hi: rgba(255, 200, 70, 0.34);
 }
 
+[data-theme='bluey'] {
+  --bg: #101c38;
+  --surface: rgba(255, 255, 255, 0.055);
+  --surface-2: rgba(255, 255, 255, 0.11);
+  --text: #eaf3ff;
+  --muted: #9db4d8;
+  --line: rgba(255, 255, 255, 0.1);
+  --accent: #6cb9f2;
+  --accent-2: #ffd9a6;
+  --glow: rgba(108, 185, 242, 0.35);
+  --glow-hi: rgba(255, 189, 122, 0.4);
+}
+
 .large-text {
   --type-scale: 1.35;
 }
@@ -266,6 +279,57 @@ button:focus-visible {
 
 .swatch-dawn {
   background: radial-gradient(circle at 35% 35%, #ffc9a3, #7c2830 70%);
+}
+
+.swatch-bluey {
+  background: radial-gradient(circle at 35% 35%, #a8dcff, #1d3f7c 70%);
+}
+
+/* ============ bluey pups ============ */
+
+/* Decorative heeler pups; only the Bluey theme shows them. */
+.pups {
+  display: none;
+}
+
+[data-theme='bluey'] .pups {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.pup {
+  height: auto;
+  transform-origin: 50% 100%;
+  animation: pup-breathe 6s ease-in-out infinite;
+}
+
+/* The pups breathe along at roughly session pace. */
+@keyframes pup-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.045);
+  }
+}
+
+.pup-blue {
+  width: 68px;
+  --pup-body: #7cb8e8;
+  --pup-dark: #3d6fa8;
+  --pup-light: #f6e7c9;
+}
+
+.pup-orange {
+  width: 56px;
+  animation-delay: -3s;
+  --pup-body: #f2a25e;
+  --pup-dark: #c9702f;
+  --pup-light: #fbeacf;
 }
 
 .text-toggle {

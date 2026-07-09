@@ -43,6 +43,15 @@ export const THEMES: Theme[] = [
     innerHi: [1.0, 0.9, 0.53], // peach warms toward gold
     outerHi: [0.8, 0.36, 0.17],
   },
+  {
+    id: 'bluey',
+    label: 'Bluey',
+    bg: [0.063, 0.11, 0.22],
+    inner: [0.66, 0.86, 1.0],
+    outer: [0.15, 0.35, 0.7],
+    innerHi: [1.0, 0.8, 0.55], // heeler blue warms toward Bingo orange
+    outerHi: [0.78, 0.42, 0.22],
+  },
 ];
 
 export function applyTheme(id: string): Theme {
